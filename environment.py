@@ -23,8 +23,15 @@ class Environment(BehaviorScript):
         self._world = World()
         self._world.scene.clear()
         self._world.scene.add_default_ground_plane()
+        self.create_wall()
+        self.create_cliff()
 
-        #>>>>> create wall >>>>>#
+    def create_wall(self):
+        """
+        According to the assignment report. Build 14 * 6 grid wall.
+
+        We use the upper corner as original point of this map, therefore we in the y direction it will be minor.
+        """
         wall_original_location = np.array([
             [-7.5, 0, .5],
             [0, 3.5, .5],
@@ -53,9 +60,17 @@ class Environment(BehaviorScript):
                     scale=wall_scale[i],
                 )
             )
-        #<<<<< Create Wall <<<<<#
+        
+    
+    def create_cliff(self):
+        """
+        According to the assignment report, we will build some cliff which don't have rigid body and collision effect.
 
-        #>>>>> Create Cliff >>>>>#
+        Therefor the agent and box can pass through the cliff.
+
+        Maybe we should create new class for cliff for reward function, 
+        if agent and box fall into cliff, this exprience should be restart and get -1000 reward.
+        """
         cliff_original_location = np.array([
             [6, -0, 0.5],
             [6, -1, 0.5],
@@ -98,14 +113,6 @@ class Environment(BehaviorScript):
             self._world.scene.add(
                 cliff_dummy_cuboid
             )
-
-        #<<<<< Create Cliff <<<<<#
-
-
-        
-
-        
-
 
     def on_destroy(self):
         print(f"{__class__.__name__}.on_destroy()->{self.prim_path}")
