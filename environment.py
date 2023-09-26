@@ -4,6 +4,9 @@ from omni.isaac.core.objects import FixedCuboid, DynamicCuboid
 import numpy as np
 from omni.isaac.core.tasks import BaseTask
 
+"""
+TODO: We may should reform this class as task, which will crete a environment and other parts.
+"""
 class Environment(BaseTask):
 
     def __init__(self, name, offset=None):
@@ -11,8 +14,8 @@ class Environment(BaseTask):
         Create a grid world:
         1. wall
         2. cliff
-        3. TODO: box
-        4. TODO: target
+        3. box
+        4. target
 
         this world will use meter as standard grid, 14m * 6m world.
         In this class all items is static!
