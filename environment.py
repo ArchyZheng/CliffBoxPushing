@@ -4,12 +4,26 @@ from omni.isaac.core.objects import FixedCuboid, DynamicCuboid
 import numpy as np
 from omni.isaac.core.tasks import BaseTask
 
-"""
-TODO: We may should reform this class as task, which will crete a environment and other parts.
-"""
-class Environment(BaseTask):
+
+class CliffBoxPushing(BaseTask):
+    """
+    TODO: We may should reform this class as task, which will crete a environment and agent.
+
+    This class is highly relative to reference shown below.
+    ref: https://docs.omniverse.nvidia.com/isaacsim/latest/tutorial_core_adding_manipulator.html#what-is-a-task
+    """
 
     def __init__(self, name, offset=None):
+        """
+        @param name: the name of task
+        @param offset: the location related
+        """
+        super().__init__(name=name, offset=offset)
+        self._task_achieved = False
+        self._name = name
+        self.set_up_scene(World().scene)
+
+    def set_up_scene(self, scene):
         """
         Create a grid world:
         1. wall
@@ -17,38 +31,59 @@ class Environment(BaseTask):
         3. box
         4. target
 
-        this world will use meter as standard grid, 14m * 6m world.
+        This world will use meter as standard grid, 14m * 6m world.
         In this class all items is static!
 
-        TODO: initial robot
+        TODO: initial agent
 
         ATTENSION!
 
         THE UPPER LEFT CORNER is [0, 0],
         AND THE Y DIRECTION IS MINER.
-        @param name: the name of task
-        @param offset: the location related
+        @param scene: the world you create objects on it
         """
-        super().__init__(name=name, offset=offset)
-        self._name = name
-        self._world = World()
-        # create environment
+        super().set_up_scene(scene)
+        self._scene = scene
+        scene.add_default_ground_plane()
         self.create_wall()
         self.create_cliff()
-        # create box
-        self.create_box()
-        # create target
-        self.create_target()
+        self._target = self.create_target()
+        self._box = self.create_box()
+        self._agent = self.create_agent()
+
+    def create_agent(self):
+        """
+        The initial location of agent is at [0, -5, .5].
+
+        @return agent DynamicCuboid
+        """
+        location_original = np.array([0, -5, .5])
+        location_agent = location_original + np.array([.5, -.5, 0]) + self._offset
+        name = self._name + 'agent'
+        agent = DynamicCuboid(
+                prim_path='/World/' + self._name + "/" + 'agent',
+                name=name,
+                position=location_agent,
+                scale=np.array([1, 1, 1]),
+                color=np.array([0, 0, 0]),
+                mass=True,
+        )
+        self._scene.add(
+            agent
+        )
+        return agent
+
 
     def create_box(self):
         """
-        the initial location of box is fixed at [1, -4, 0.5]
+        the initial location of box is fixed at [1, -4, 0.5].
+
+        @return box DynamicCuboid
         """
         location_original = np.array([1, -4, .5])
         location_box = location_original + np.array([.5, -.5, 0]) + self._offset
         name = self._name + 'box'
-        self._world.scene.add(
-            DynamicCuboid(
+        box = DynamicCuboid(
                 prim_path='/World/' + self._name + "/" + 'box',
                 name=name,
                 position=location_box,
@@ -56,11 +91,16 @@ class Environment(BaseTask):
                 color=np.array([0.5, 0.5, 0]),
                 mass=True,
             )
+        self._scene.add(
+            box
         )
+        return box
 
     def create_target(self):
         """
         the position of target is also fixed at [13, -4, .5]. The target can be pass through.
+        
+        @return target DynamicCuboid
         """
         location_original = np.array([13, -4, .5])
         location_box = location_original + np.array([.5, -.5, 0]) + self._offset
@@ -75,9 +115,10 @@ class Environment(BaseTask):
             )
         dummy_target.disable_rigid_body_physics()
         dummy_target.set_collision_enabled(False)
-        self._world.scene.add(
+        self._scene.add(
             dummy_target
         )
+        return dummy_target
 
 
     def create_wall(self):
@@ -93,12 +134,9 @@ class Environment(BaseTask):
             [0, 3.5, .5],
             [7.5, 0, .5],
             [0, -3.5, .5]
-        ])  #order: left, top, right, bottom
+        ])
         wall_location = wall_original_location + np.array([7, -3, 0]) + self._offset # adjust the postion
-
         wall_name = ['wall_left', 'wall_top', 'wall_right', 'wall_bottom']
-
-
         wall_scale = np.array([
             [1, 6, 1],
             [14, 1, 1],
@@ -109,7 +147,7 @@ class Environment(BaseTask):
 
         for i in range(4):
             name = self._name + wall_name[i]
-            self._world.scene.add(
+            self._scene.add(
                 FixedCuboid(
                     prim_path='/World/' + self._name + "/" +wall_name[i],
                     name=name,
@@ -169,6 +207,6 @@ class Environment(BaseTask):
             cliff_dummy_cuboid.disable_rigid_body_physics()
             cliff_dummy_cuboid.set_collision_enabled(False)
 
-            self._world.scene.add(
+            self._scene.add(
                 cliff_dummy_cuboid
             )

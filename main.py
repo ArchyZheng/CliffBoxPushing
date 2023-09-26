@@ -1,6 +1,6 @@
 from omni.isaac.core.scenes.scene import Scene
 from omni.kit.scripting import BehaviorScript
-from .environment import Environment
+from .environment import CliffBoxPushing
 from omni.isaac.examples.base_sample import BaseSample
 from omni.isaac.core import World
 import numpy as np
@@ -15,10 +15,8 @@ class Main(BehaviorScript):
         self._world = World()
         self._world.clear()
         self._task = []
-        self._number_of_tasks_colomn = 12
-        self._number_of_tasks_row = 6
-
-
+        self._number_of_tasks_colomn = 2 # default 12
+        self._number_of_tasks_row = 2 # default 6
     
     def on_play(self):
         self._world.clear()
@@ -26,7 +24,9 @@ class Main(BehaviorScript):
         
         gap_colomn = 7
         gap_row = 15
+        
         for colomn in range(self._number_of_tasks_colomn):
             for row in range(self._number_of_tasks_row):
-                self._world.add_task(Environment(name="task" + "colomn" + str(colomn) + "row" + str(row), offset=np.array([-40 + gap_row * row, -40 + gap_colomn * colomn, 0])))
+                self._world.add_task(CliffBoxPushing(name="task" + "colomn" + str(colomn) + "row" + str(row),\
+                                                  offset=np.array([-40 + gap_row * row, -40 + gap_colomn * colomn, 0])))
         return 
