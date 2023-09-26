@@ -2,27 +2,37 @@ from omni.kit.scripting import BehaviorScript
 from omni.isaac.core import World
 from omni.isaac.core.objects import FixedCuboid, DynamicCuboid
 import numpy as np
+from omni.isaac.core.tasks import BaseTask
 
-class Environment(BehaviorScript):
-    def on_init(self):
+class Environment(BaseTask):
+
+    def __init__(self, name, offset=None):
         """
         Create a grid world:
         1. ground
         2. wall
         3. cliff
+        4. TODO: box
+        5. TODO: target
 
         this world will use meter as standard grid, 14m * 6m world.
         In this class all items is static!
 
+        TODO: initial robot
 
         ATTENSION!
 
         THE UPPER LEFT CORNER is [0, 0],
         AND THE Y DIRECTION IS MINER.
+        @param name: the name of task
+        @param offset: the location related
         """
+        super().__init__(name=name, offset=offset)
+        self._name = name
         self._world = World()
-        self._world.scene.clear()
-        self._world.scene.add_default_ground_plane()
+
+        # self._world.scene.add_default_ground_plane()
+
         self.create_wall()
         self.create_cliff()
 
@@ -31,6 +41,8 @@ class Environment(BehaviorScript):
         According to the assignment report. Build 14 * 6 grid wall.
 
         We use the upper corner as original point of this map, therefore we in the y direction it will be minor.
+
+        The order is `left`, `top`, `right`, `bottom`
         """
         wall_original_location = np.array([
             [-7.5, 0, .5],
@@ -38,7 +50,7 @@ class Environment(BehaviorScript):
             [7.5, 0, .5],
             [0, -3.5, .5]
         ])  #order: left, top, right, bottom
-        wall_location = wall_original_location + np.array([7, -3, 0])
+        wall_location = wall_original_location + np.array([7, -3, 0]) + self._offset # adjust the postion
 
         wall_name = ['wall_left', 'wall_top', 'wall_right', 'wall_bottom']
 
@@ -52,10 +64,11 @@ class Environment(BehaviorScript):
         )
 
         for i in range(4):
+            name = self._name + wall_name[i]
             self._world.scene.add(
                 FixedCuboid(
-                    prim_path='/World/' + wall_name[i],
-                    name=wall_name[i],
+                    prim_path='/World/' + self._name + "/" +wall_name[i],
+                    name=name,
                     position=wall_location[i],
                     scale=wall_scale[i],
                 )
@@ -92,41 +105,26 @@ class Environment(BehaviorScript):
             [12, -5, 0.5],
         ]) # according to assignment
 
-        cliff_location = cliff_original_location + np.array([.5, -.5, 0])
+        cliff_location = cliff_original_location + np.array([.5, -.5, 0]) + self._offset# adjust the postion
         cliff_scale = np.array([1, 1, 1])
         cliff_color = np.array([1.0, 0, 0]) # RGB
-        print(cliff_location[0])
 
         for index in range(len(cliff_location)):
             x, y,_ = cliff_location[index]
-            prim_name = 'cliff'+str(index)
+            prim_name = 'cliff'+ str(index)
+            name = self._name + 'cliff'+ str(index)
             cliff_dummy_cuboid = DynamicCuboid(
-                prim_path='/World/' + prim_name,
-                name=prim_name,
+                prim_path='/World/' + self._name + "/" + prim_name,
+                name=name,
                 position=cliff_location[index],
                 scale=cliff_scale,
                 color=cliff_color,
                 mass=True,
             )
+            # the cuboid can be pass through.
             cliff_dummy_cuboid.disable_rigid_body_physics()
             cliff_dummy_cuboid.set_collision_enabled(False)
+
             self._world.scene.add(
                 cliff_dummy_cuboid
             )
-
-    def on_destroy(self):
-        print(f"{__class__.__name__}.on_destroy()->{self.prim_path}")
-
-    def on_play(self):
-        print("hello world!!!!")
-        print(f"{__class__.__name__}.on_play()->{self.prim_path}")
-
-    def on_pause(self):
-        print(f"{__class__.__name__}.on_pause()->{self.prim_path}")
-
-    def on_stop(self):
-        print(f"{__class__.__name__}.on_stop()->{self.prim_path}")
-
-    def on_update(self, current_time: float, delta_time: float):
-        pass
-        # print(f"{__class__.__name__}.on_update(current_time={current_time}, delta_time={delta_time})->{self.prim_path}")
