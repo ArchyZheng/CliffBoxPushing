@@ -9,11 +9,10 @@ class Environment(BaseTask):
     def __init__(self, name, offset=None):
         """
         Create a grid world:
-        1. ground
-        2. wall
-        3. cliff
-        4. TODO: box
-        5. TODO: target
+        1. wall
+        2. cliff
+        3. TODO: box
+        4. TODO: target
 
         this world will use meter as standard grid, 14m * 6m world.
         In this class all items is static!
@@ -30,11 +29,32 @@ class Environment(BaseTask):
         super().__init__(name=name, offset=offset)
         self._name = name
         self._world = World()
-
-        # self._world.scene.add_default_ground_plane()
-
+        # create environment
         self.create_wall()
         self.create_cliff()
+        # create box
+        self.create_box()
+
+        # create target
+
+    def create_box(self):
+        """
+        the initial location of box is fixed at [1, -4, 0.5]
+        """
+        location_original = np.array([1, -4, .5])
+        location_box = location_original + np.array([.5, -.5, 0]) + self._offset
+        name = self._name + 'box'
+        self._world.scene.add(
+            DynamicCuboid(
+                prim_path='/World/' + self._name + "/" + 'box',
+                name=name,
+                position=location_box,
+                scale=np.array([1, 1, 1]),
+                color=np.array([0.5, 0.5, 0]),
+                mass=True,
+            )
+        )
+
 
     def create_wall(self):
         """
@@ -105,7 +125,7 @@ class Environment(BaseTask):
             [12, -5, 0.5],
         ]) # according to assignment
 
-        cliff_location = cliff_original_location + np.array([.5, -.5, 0]) + self._offset# adjust the postion
+        cliff_location = cliff_original_location + np.array([.5, -.5, 0]) + self._offset # adjust the postion
         cliff_scale = np.array([1, 1, 1])
         cliff_color = np.array([1.0, 0, 0]) # RGB
 
