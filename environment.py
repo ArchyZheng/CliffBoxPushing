@@ -1,6 +1,6 @@
 from omni.kit.scripting import BehaviorScript
 from omni.isaac.core import World
-from omni.isaac.core.objects import FixedCuboid
+from omni.isaac.core.objects import FixedCuboid, DynamicCuboid
 import numpy as np
 
 class Environment(BehaviorScript):
@@ -17,7 +17,8 @@ class Environment(BehaviorScript):
 
         ATTENSION!
 
-        THE UPPER LEFT CORNER is [0, 0] 
+        THE UPPER LEFT CORNER is [0, 0],
+        AND THE Y DIRECTION IS MINER.
         """
         self._world = World()
         self._world.scene.clear()
@@ -34,6 +35,7 @@ class Environment(BehaviorScript):
 
         wall_name = ['wall_left', 'wall_top', 'wall_right', 'wall_bottom']
 
+
         wall_scale = np.array([
             [1, 6, 1],
             [14, 1, 1],
@@ -48,7 +50,7 @@ class Environment(BehaviorScript):
                     prim_path='/World/' + wall_name[i],
                     name=wall_name[i],
                     position=wall_location[i],
-                    scale=wall_scale[i]
+                    scale=wall_scale[i],
                 )
             )
         #<<<<< Create Wall <<<<<#
@@ -73,7 +75,7 @@ class Environment(BehaviorScript):
             [12, -3, 0.5],
             [12, -4, 0.5],
             [12, -5, 0.5],
-        ])
+        ]) # according to assignment
 
         cliff_location = cliff_original_location + np.array([.5, -.5, 0])
         cliff_scale = np.array([1, 1, 1])
@@ -83,14 +85,18 @@ class Environment(BehaviorScript):
         for index in range(len(cliff_location)):
             x, y,_ = cliff_location[index]
             prim_name = 'cliff'+str(index)
+            cliff_dummy_cuboid = DynamicCuboid(
+                prim_path='/World/' + prim_name,
+                name=prim_name,
+                position=cliff_location[index],
+                scale=cliff_scale,
+                color=cliff_color,
+                mass=True,
+            )
+            cliff_dummy_cuboid.disable_rigid_body_physics()
+            cliff_dummy_cuboid.set_collision_enabled(False)
             self._world.scene.add(
-                FixedCuboid(
-                    prim_path='/World/' + prim_name,
-                    name=prim_name,
-                    position=cliff_location[index],
-                    scale=cliff_scale,
-                    color=cliff_color
-                )
+                cliff_dummy_cuboid
             )
 
         #<<<<< Create Cliff <<<<<#
