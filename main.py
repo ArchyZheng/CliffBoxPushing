@@ -5,12 +5,13 @@ from omni.isaac.examples.base_sample import BaseSample
 from omni.isaac.core import World
 import numpy as np
 
-"""
-This class is created for creating multitasks in Isaac Sim.
 
-The main method is on_play.
-"""
 class Main(BehaviorScript):
+    """
+    This class is created for creating multitasks in Isaac Sim.
+
+    The main method is on_play.
+    """
     def on_init(self):
         self._world = World()
         self._world.clear()
