@@ -34,8 +34,8 @@ class Environment(BaseTask):
         self.create_cliff()
         # create box
         self.create_box()
-
         # create target
+        self.create_target()
 
     def create_box(self):
         """
@@ -53,6 +53,27 @@ class Environment(BaseTask):
                 color=np.array([0.5, 0.5, 0]),
                 mass=True,
             )
+        )
+
+    def create_target(self):
+        """
+        the position of target is also fixed at [13, -4, .5]. The target can be pass through.
+        """
+        location_original = np.array([13, -4, .5])
+        location_box = location_original + np.array([.5, -.5, 0]) + self._offset
+        name = self._name + 'target'
+        dummy_target = DynamicCuboid(
+                prim_path='/World/' + self._name + "/" + 'target',
+                name=name,
+                position=location_box,
+                scale=np.array([1, 1, 1]),
+                color=np.array([0, 1, 0]),
+                mass=True,
+            )
+        dummy_target.disable_rigid_body_physics()
+        dummy_target.set_collision_enabled(False)
+        self._world.scene.add(
+            dummy_target
         )
 
 
