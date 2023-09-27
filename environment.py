@@ -1,8 +1,11 @@
-from omni.kit.scripting import BehaviorScript
 from omni.isaac.core import World
 from omni.isaac.core.objects import FixedCuboid, DynamicCuboid
 import numpy as np
+from omni.isaac.core.utils.nucleus import get_assets_root_path
+from omni.isaac.core.utils.stage import add_reference_to_stage
+from omni.isaac.core.robots import Robot
 from omni.isaac.core.tasks import BaseTask
+from omni.isaac.core.utils.types import ArticulationAction
 
 
 class CliffBoxPushing(BaseTask):
@@ -22,6 +25,8 @@ class CliffBoxPushing(BaseTask):
         self._task_achieved = False
         self._name = name
         self.set_up_scene(World().scene)
+        self.set_up_post_load()
+
 
     def set_up_scene(self, scene):
         """
@@ -49,7 +54,52 @@ class CliffBoxPushing(BaseTask):
         self.create_cliff()
         self._target = self.create_target()
         self._box = self.create_box()
-        self._agent = self.create_agent()
+
+
+        # self._agent = self.create_agent()
+        self._agent = self.create_wheel_agent()
+        self.set_up_post_load()
+
+        # action = ArticulationAction(joint_positions=None, joint_efforts=None, joint_velocities=5 * np.random.rand(2,))
+        # self._agent.apply_action(action)
+        # self._jetbot_articulation_controller.apply_action(action)
+        
+
+    def set_up_post_load(self):
+        """
+        Control the agent.
+
+        This method just for test.
+
+        reference: https://docs.omniverse.nvidia.com/isaacsim/latest/tutorial_core_hello_robot.html#move-the-robot
+        """
+        self._jetbot_articulation_controller = self._agent.get_articulation_controller()
+        # self._world.add_physics_callback("sending_actions", callback_fn=self.send_robot_actions)
+
+    def send_robot_actions(self):
+        self._jetbot_articulation_controller.apply_action(ArticulationAction(joint_positions=None,
+                                                                    joint_efforts=None,
+                                                                    joint_velocities=5 * np.random.rand(2,)))
+
+    def create_wheel_agent(self):
+        """
+        Create a wheel robot.
+        
+        This method just for test.
+
+        reference: https://docs.omniverse.nvidia.com/isaacsim/latest/tutorial_core_hello_robot.html
+        """
+        assets_root_path = get_assets_root_path()
+        asset_path = assets_root_path + "/Isaac/Robots/Jetbot/jetbot.usd"
+        prim_path = "/World/" + self._name + "/Fancy_Robot"
+        add_reference_to_stage(usd_path=asset_path, prim_path=prim_path)
+
+        location_original = np.array([0, -5, .5])
+        location_agent = location_original + np.array([.5, -.5, 0]) + self._offset
+        scale = np.array([5, 5, 5])
+        jetbot_robot = self._scene.add(Robot(prim_path=prim_path, name=self._name + "fancy_robot", position=location_agent, scale=scale))
+        return jetbot_robot
+
 
     def create_agent(self):
         """
@@ -76,7 +126,7 @@ class CliffBoxPushing(BaseTask):
 
     def create_box(self):
         """
-        the initial location of box is fixed at [1, -4, 0.5].
+        The initial location of box is fixed at [1, -4, 0.5].
 
         @return box DynamicCuboid
         """
@@ -98,7 +148,7 @@ class CliffBoxPushing(BaseTask):
 
     def create_target(self):
         """
-        the position of target is also fixed at [13, -4, .5]. The target can be pass through.
+        The position of target is also fixed at [13, -4, .5]. The target can be pass through.
         
         @return target DynamicCuboid
         """

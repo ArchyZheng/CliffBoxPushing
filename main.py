@@ -1,7 +1,6 @@
 from omni.isaac.core.scenes.scene import Scene
 from omni.kit.scripting import BehaviorScript
 from .environment import CliffBoxPushing
-from omni.isaac.examples.base_sample import BaseSample
 from omni.isaac.core import World
 import numpy as np
 
