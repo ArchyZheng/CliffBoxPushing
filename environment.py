@@ -25,8 +25,6 @@ class CliffBoxPushing(BaseTask):
         self._task_achieved = False
         self._name = name
         self.set_up_scene(World().scene)
-        self.set_up_post_load()
-
 
     def set_up_scene(self, scene):
         """
@@ -54,32 +52,9 @@ class CliffBoxPushing(BaseTask):
         self.create_cliff()
         self._target = self.create_target()
         self._box = self.create_box()
-
-
-        # self._agent = self.create_agent()
         self._agent = self.create_wheel_agent()
-        self.set_up_post_load()
 
-        # action = ArticulationAction(joint_positions=None, joint_efforts=None, joint_velocities=5 * np.random.rand(2,))
-        # self._agent.apply_action(action)
-        # self._jetbot_articulation_controller.apply_action(action)
-        
 
-    def set_up_post_load(self):
-        """
-        Control the agent.
-
-        This method just for test.
-
-        reference: https://docs.omniverse.nvidia.com/isaacsim/latest/tutorial_core_hello_robot.html#move-the-robot
-        """
-        self._jetbot_articulation_controller = self._agent.get_articulation_controller()
-        # self._world.add_physics_callback("sending_actions", callback_fn=self.send_robot_actions)
-
-    def send_robot_actions(self):
-        self._jetbot_articulation_controller.apply_action(ArticulationAction(joint_positions=None,
-                                                                    joint_efforts=None,
-                                                                    joint_velocities=5 * np.random.rand(2,)))
 
     def create_wheel_agent(self):
         """
