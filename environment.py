@@ -4,27 +4,42 @@ import numpy as np
 from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from omni.isaac.core.robots import Robot
+from omni.isaac.wheeled_robots.robots import WheeledRobot
 from omni.isaac.core.tasks import BaseTask
 from omni.isaac.core.utils.types import ArticulationAction
+from omni.isaac.wheeled_robots.controllers.differential_controller import DifferentialController
 
 
 class CliffBoxPushing(BaseTask):
     """
-    TODO: We may should reform this class as task, which will crete a environment and agent.
-
     This class is highly relative to reference shown below.
     ref: https://docs.omniverse.nvidia.com/isaacsim/latest/tutorial_core_adding_manipulator.html#what-is-a-task
     """
 
     def __init__(self, name, offset=None):
         """
+        Setup the scene.
+
+        Setup the controller.
+
         @param name: the name of task
         @param offset: the location related
         """
         super().__init__(name=name, offset=offset)
+        self._my_world = World(physics_dt=1.0/60.0, rendering_dt=1.0/60.0, stage_units_in_meters=1.0)
+        self._agent:WheeledRobot = None
+        self._box = None
+        self._target = None
         self._task_achieved = False
         self._name = name
-        self.set_up_scene(World().scene)
+        self.set_up_scene(self._my_world.scene)
+
+        # test part 
+        # action = ArticulationAction(joint_positions=None, joint_indices=None, joint_velocities=np.array([5, 5]))
+        self._jetbot_controller = DifferentialController(name="simple_controller", wheel_radius=0.0325, wheel_base=0.1125)
+
+        # self._controller = self._agent.get_articulation_controller()
+        self._agent.apply_wheel_actions(self._jetbot_controller.forward(command=[0.5, 10]))
 
     def set_up_scene(self, scene):
         """
@@ -34,27 +49,26 @@ class CliffBoxPushing(BaseTask):
         3. box
         4. target
 
-        This world will use meter as standard grid, 14m * 6m world.
+        This world will use meter as standard grid, 14 * 6 world.
         In this class all items is static!
 
         TODO: initial agent
 
         ATTENSION!
 
-        THE UPPER LEFT CORNER is [0, 0],
+        THE UPPER LEFT CORNER IS [0, 0],
         AND THE Y DIRECTION IS MINER.
         @param scene: the world you create objects on it
         """
         super().set_up_scene(scene)
-        self._scene = scene
+        self._scene:World().scene = scene
         scene.add_default_ground_plane()
         self.create_wall()
         self.create_cliff()
         self._target = self.create_target()
         self._box = self.create_box()
         self._agent = self.create_wheel_agent()
-
-
+        return
 
     def create_wheel_agent(self):
         """
@@ -67,14 +81,20 @@ class CliffBoxPushing(BaseTask):
         assets_root_path = get_assets_root_path()
         asset_path = assets_root_path + "/Isaac/Robots/Jetbot/jetbot.usd"
         prim_path = "/World/" + self._name + "/Fancy_Robot"
+
+        # Question: What is the meaning of this function?
+        # Answer: A Reference targets a prim from a layer 
+        # and loads it and all of its descendants into a new namespace within the referencing layer.
         add_reference_to_stage(usd_path=asset_path, prim_path=prim_path)
 
         location_original = np.array([0, -5, .5])
         location_agent = location_original + np.array([.5, -.5, 0]) + self._offset
-        scale = np.array([5, 5, 5])
-        jetbot_robot = self._scene.add(Robot(prim_path=prim_path, name=self._name + "fancy_robot", position=location_agent, scale=scale))
-        return jetbot_robot
 
+        _robot = self._scene.add(
+            WheeledRobot(prim_path=prim_path, name=self._name + "fancy_robot", position=location_agent, wheel_dof_names=["left_wheel_joint", "right_wheel_joint"], create_robot=True, usd_path=asset_path))
+
+        # _robot = self._scene.get_object(name=self._name + "fancy_robot")
+        return _robot
 
     def create_agent(self):
         """
@@ -86,18 +106,17 @@ class CliffBoxPushing(BaseTask):
         location_agent = location_original + np.array([.5, -.5, 0]) + self._offset
         name = self._name + 'agent'
         agent = DynamicCuboid(
-                prim_path='/World/' + self._name + "/" + 'agent',
-                name=name,
-                position=location_agent,
-                scale=np.array([1, 1, 1]),
-                color=np.array([0, 0, 0]),
-                mass=True,
+            prim_path='/World/' + self._name + "/" + 'agent',
+            name=name,
+            position=location_agent,
+            scale=np.array([1, 1, 1]),
+            color=np.array([0, 0, 0]),
+            mass=True,
         )
         self._scene.add(
             agent
         )
         return agent
-
 
     def create_box(self):
         """
@@ -109,13 +128,13 @@ class CliffBoxPushing(BaseTask):
         location_box = location_original + np.array([.5, -.5, 0]) + self._offset
         name = self._name + 'box'
         box = DynamicCuboid(
-                prim_path='/World/' + self._name + "/" + 'box',
-                name=name,
-                position=location_box,
-                scale=np.array([1, 1, 1]),
-                color=np.array([0.5, 0.5, 0]),
-                mass=True,
-            )
+            prim_path='/World/' + self._name + "/" + 'box',
+            name=name,
+            position=location_box,
+            scale=np.array([1, 1, 1]),
+            color=np.array([0.5, 0.5, 0]),
+            mass=True,
+        )
         self._scene.add(
             box
         )
@@ -131,20 +150,19 @@ class CliffBoxPushing(BaseTask):
         location_box = location_original + np.array([.5, -.5, 0]) + self._offset
         name = self._name + 'target'
         dummy_target = DynamicCuboid(
-                prim_path='/World/' + self._name + "/" + 'target',
-                name=name,
-                position=location_box,
-                scale=np.array([1, 1, 1]),
-                color=np.array([0, 1, 0]),
-                mass=True,
-            )
+            prim_path='/World/' + self._name + "/" + 'target',
+            name=name,
+            position=location_box,
+            scale=np.array([1, 1, 1]),
+            color=np.array([0, 1, 0]),
+            mass=True,
+        )
         dummy_target.disable_rigid_body_physics()
         dummy_target.set_collision_enabled(False)
         self._scene.add(
             dummy_target
         )
         return dummy_target
-
 
     def create_wall(self):
         """
@@ -160,7 +178,7 @@ class CliffBoxPushing(BaseTask):
             [7.5, 0, .5],
             [0, -3.5, .5]
         ])
-        wall_location = wall_original_location + np.array([7, -3, 0]) + self._offset # adjust the postion
+        wall_location = wall_original_location + np.array([7, -3, 0]) + self._offset  # adjust the position
         wall_name = ['wall_left', 'wall_top', 'wall_right', 'wall_bottom']
         wall_scale = np.array([
             [1, 6, 1],
@@ -172,16 +190,14 @@ class CliffBoxPushing(BaseTask):
 
         for i in range(4):
             name = self._name + wall_name[i]
-            self._scene.add(
-                FixedCuboid(
-                    prim_path='/World/' + self._name + "/" +wall_name[i],
-                    name=name,
-                    position=wall_location[i],
-                    scale=wall_scale[i],
-                )
+            dummy_wall = FixedCuboid(
+                prim_path='/World/' + self._name + "/" + wall_name[i],
+                name=name,
+                position=wall_location[i],
+                scale=wall_scale[i],
             )
-        
-    
+            self._scene.add(dummy_wall)
+
     def create_cliff(self):
         """
         According to the assignment report, we will build some cliff which don't have rigid body and collision effect.
@@ -189,7 +205,7 @@ class CliffBoxPushing(BaseTask):
         Therefor the agent and box can pass through the cliff.
 
         Maybe we should create new class for cliff for reward function, 
-        if agent and box fall into cliff, this exprience should be restart and get -1000 reward.
+        if agent and box fall into cliff, this experience should be restarted and get -1000 reward.
         """
         cliff_original_location = np.array([
             [6, -0, 0.5],
@@ -210,16 +226,16 @@ class CliffBoxPushing(BaseTask):
             [12, -3, 0.5],
             [12, -4, 0.5],
             [12, -5, 0.5],
-        ]) # according to assignment
+        ])  # according to assignment
 
-        cliff_location = cliff_original_location + np.array([.5, -.5, 0]) + self._offset # adjust the postion
+        cliff_location = cliff_original_location + np.array([.5, -.5, 0]) + self._offset  # adjust the postion
         cliff_scale = np.array([1, 1, 1])
-        cliff_color = np.array([1.0, 0, 0]) # RGB
+        cliff_color = np.array([1.0, 0, 0])  # RGB
 
         for index in range(len(cliff_location)):
-            x, y,_ = cliff_location[index]
-            prim_name = 'cliff'+ str(index)
-            name = self._name + 'cliff'+ str(index)
+            x, y, _ = cliff_location[index]
+            prim_name = 'cliff' + str(index)
+            name = self._name + 'cliff' + str(index)
             cliff_dummy_cuboid = DynamicCuboid(
                 prim_path='/World/' + self._name + "/" + prim_name,
                 name=name,
