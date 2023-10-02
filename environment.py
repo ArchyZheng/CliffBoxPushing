@@ -1,14 +1,14 @@
 from omni.isaac.core import World
 from omni.isaac.core.objects import FixedCuboid, DynamicCuboid
 import numpy as np
+from gym import spaces
 from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
-from omni.isaac.core.robots import Robot
-from omni.isaac.wheeled_robots.robots import WheeledRobot
 from omni.isaac.core.tasks import BaseTask
-from omni.isaac.core.utils.types import ArticulationAction
-from omni.isaac.wheeled_robots.controllers.differential_controller import DifferentialController
-
+from omni.isaac.core.articulations import ArticulationView
+from omni.isaac.core.utils.prims import create_prim
+from omni.isaac.core.utils.viewports import set_camera_view
+import torch
 
 class CliffBoxPushing(BaseTask):
     """
@@ -18,28 +18,30 @@ class CliffBoxPushing(BaseTask):
 
     def __init__(self, name, offset=None):
         """
-        Setup the scene.
+        Task Class is created for specify the task!
 
-        Setup the controller.
+        Such like:
+        1. observation space
+        2. action space
+        3. initilize
+        4. observation variables
+        5. task state variables
 
         @param name: the name of task
         @param offset: the location related
         """
         super().__init__(name=name, offset=offset)
-        self._my_world = World(physics_dt=1.0/60.0, rendering_dt=1.0/60.0, stage_units_in_meters=1.0)
-        self._agent:WheeledRobot = None
-        self._box = None
-        self._target = None
-        self._task_achieved = False
         self._name = name
-        self.set_up_scene(self._my_world.scene)
 
-        # test part 
-        # action = ArticulationAction(joint_positions=None, joint_indices=None, joint_velocities=np.array([5, 5]))
-        self._jetbot_controller = DifferentialController(name="simple_controller", wheel_radius=0.0325, wheel_base=0.1125)
+        # task state varibels:
+        self._num_observation = 2 # the location of agent and box
+        self.num_envs = 1
+        self._device = 'cpu'
+        self._num_action = 4
 
-        # self._controller = self._agent.get_articulation_controller()
-        self._agent.apply_wheel_actions(self._jetbot_controller.forward(command=[0.5, 10]))
+        self.action_space = spaces.Discrete(self._num_action)
+        self.observation_space = spaces.Box(low=0, high=14, shape=(2, 2))
+
 
     def set_up_scene(self, scene):
         """
@@ -52,7 +54,7 @@ class CliffBoxPushing(BaseTask):
         This world will use meter as standard grid, 14 * 6 world.
         In this class all items is static!
 
-        TODO: initial agent
+        Initilize the agent.
 
         ATTENSION!
 
@@ -60,41 +62,58 @@ class CliffBoxPushing(BaseTask):
         AND THE Y DIRECTION IS MINER.
         @param scene: the world you create objects on it
         """
-        super().set_up_scene(scene)
-        self._scene:World().scene = scene
+        self._scene = scene
         scene.add_default_ground_plane()
+        
         self.create_wall()
         self.create_cliff()
+        
         self._target = self.create_target()
         self._box = self.create_box()
         self._agent = self.create_wheel_agent()
+
+        self._scene.add(
+            self._agent,
+        )
+        self._scene.add(
+            self._box,
+        )
+        self._scene.add(
+            self._target,
+        )
+        self._scene.add_default_ground_plane()
         return
+
+
 
     def create_wheel_agent(self):
         """
         Create a wheel robot.
-        
-        This method just for test.
 
-        reference: https://docs.omniverse.nvidia.com/isaacsim/latest/tutorial_core_hello_robot.html
+        1. add agent into scene
+        2. state index
+        
+        reference: https://docs.omniverse.nvidia.com/isaacsim/latest/tutorial_gym_new_rl_example.html
         """
         assets_root_path = get_assets_root_path()
         asset_path = assets_root_path + "/Isaac/Robots/Jetbot/jetbot.usd"
-        prim_path = "/World/" + self._name + "/Fancy_Robot"
+        prim_path = "/World/" + self.name + "/Fancy_Robot"
 
-        # Question: What is the meaning of this function?
-        # Answer: A Reference targets a prim from a layer 
-        # and loads it and all of its descendants into a new namespace within the referencing layer.
+        # this function can create the agent from usd.
         add_reference_to_stage(usd_path=asset_path, prim_path=prim_path)
 
         location_original = np.array([0, -5, .5])
         location_agent = location_original + np.array([.5, -.5, 0]) + self._offset
+        robot = ArticulationView(prim_paths_expr=prim_path, name=self._name + "fancy_robot")
+        # get the dof from usd
+        return robot
+    
+    def post_reset(self):
+        self._agent_left_joint = self._agent.get_dof_index("chassis/left_wheel_joint")
+        self._agent_right_joint = self._agent.get_dof_index("chassis/right_wheel_joint")
 
-        _robot = self._scene.add(
-            WheeledRobot(prim_path=prim_path, name=self._name + "fancy_robot", position=location_agent, wheel_dof_names=["left_wheel_joint", "right_wheel_joint"], create_robot=True, usd_path=asset_path))
-
-        # _robot = self._scene.get_object(name=self._name + "fancy_robot")
-        return _robot
+        indices = torch.arange(self._agent.count, dtype=torch.int64,device=self._device)
+        self.reset(indices)
 
     def create_agent(self):
         """
@@ -112,9 +131,6 @@ class CliffBoxPushing(BaseTask):
             scale=np.array([1, 1, 1]),
             color=np.array([0, 0, 0]),
             mass=True,
-        )
-        self._scene.add(
-            agent
         )
         return agent
 
@@ -134,9 +150,6 @@ class CliffBoxPushing(BaseTask):
             scale=np.array([1, 1, 1]),
             color=np.array([0.5, 0.5, 0]),
             mass=True,
-        )
-        self._scene.add(
-            box
         )
         return box
 
@@ -159,9 +172,6 @@ class CliffBoxPushing(BaseTask):
         )
         dummy_target.disable_rigid_body_physics()
         dummy_target.set_collision_enabled(False)
-        self._scene.add(
-            dummy_target
-        )
         return dummy_target
 
     def create_wall(self):
