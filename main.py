@@ -67,11 +67,12 @@ def SimulationStarter():
     world.scene.add(
         _robot
     )
-    world.reset()
+    world.step()
+    # world.reset()
+    # print(_robot.num_dof)
     while kit._app.is_running() and not kit.is_exiting():
         # _agent_left_joint = _robot.get_dof_index("chassis/left_wheel_joint")
         # _agent_right_joint = _robot.get_dof_index("chassis/right_wheel_joint")
-        print(_robot.dof_names)
         kit.update()
 
     kit.close()

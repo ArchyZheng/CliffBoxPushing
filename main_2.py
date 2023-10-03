@@ -1,17 +1,19 @@
 from omni.isaac.gym.vec_env import VecEnvBase
 
-env = VecEnvBase(headless=True)
+env = VecEnvBase(headless=True, enable_livestream=True)
 
 
-from environment import CliffBoxPushing
+from CliffBoxPushingTask import CliffBoxPushingTask
+import numpy as np
 
-task = CliffBoxPushing(name="CliffBoxPushing")
+task = CliffBoxPushingTask(name="CliffBoxPushing", offset=np.array([0, 0, 0]))
 env.set_task(task, backend="torch")
-env.reset()
 
 import time
+# time.sleep(10000)
+while True:
+    env._world.step()
+    env.step()
+    env.render()
 
-from omni.isaac.core.utils.extensions import enable_extension
-
-enable_extension("omni.kit.livestream.native")
-time.sleep(100000)
+env.close()
