@@ -1,50 +1,6 @@
 from omni.isaac.core.objects import FixedCuboid, DynamicCuboid
 import numpy as np
-from omni.isaac.core.utils.nucleus import get_assets_root_path
-from omni.isaac.core.utils.stage import add_reference_to_stage
-from omni.isaac.core.articulations import ArticulationView
-import torch
 
-def create_wheel_agent(self):
-    """
-    Create a wheel robot.
-
-    1. add agent into scene
-    2. state index
-    
-    reference: https://docs.omniverse.nvidia.com/isaacsim/latest/tutorial_gym_new_rl_example.html
-    """
-    assets_root_path = get_assets_root_path()
-    asset_path = assets_root_path + "/Isaac/Robots/Jetbot/jetbot.usd"
-    prim_path = "/World/" + self.name + "/Fancy_Robot"
-
-    # this function can create the agent from usd.
-    add_reference_to_stage(usd_path=asset_path, prim_path=prim_path)
-
-    location_original = np.array([0, -5, .5])
-    location_agent = location_original + np.array([.5, -.5, 0]) + self._offset
-    robot = ArticulationView(prim_paths_expr=prim_path, name=self._name + "fancy_robot")
-    # get the dof from usd
-    return robot
-
-def create_agent(name, offset):
-    """
-    The initial location of agent is at [0, -5, .5].
-
-    @return agent DynamicCuboid
-    """
-    location_original = np.array([0, -5, .5])
-    location_agent = location_original + np.array([.5, -.5, 0]) + offset
-    name = name + 'agent'
-    agent = DynamicCuboid(
-        prim_path='/World/' + name + "/" + 'agent',
-        name=name,
-        position=location_agent,
-        scale=np.array([1, 1, 1]),
-        color=np.array([0, 0, 0]),
-        mass=True,
-    )
-    return agent
 
 def create_box(name, offset):
     """
@@ -54,10 +10,10 @@ def create_box(name, offset):
     """
     location_original = np.array([1, -4, .5])
     location_box = location_original + np.array([.5, -.5, 0]) + offset
-    name = name + 'box'
+    object_name = name + 'box'
     box = DynamicCuboid(
         prim_path='/World/' + name + "/" + 'box',
-        name=name,
+        name=object_name,
         position=location_box,
         scale=np.array([.2, .2, .2]),
         color=np.array([0.5, 0.5, 0]),
@@ -65,18 +21,18 @@ def create_box(name, offset):
     )
     return box
 
+
 def create_target(name, offset):
     """
     The position of target is also fixed at [13, -4, .5]. The target can be pass through.
-    
     @return target DynamicCuboid
     """
     location_original = np.array([13, -4, .5])
     location_box = location_original + np.array([.5, -.5, 0]) + offset
-    name = name + 'target'
+    object_name = name + 'target'
     dummy_target = DynamicCuboid(
         prim_path='/World/' + name + "/" + 'target',
-        name=name,
+        name=object_name,
         position=location_box,
         scale=np.array([1, 1, 1]),
         color=np.array([0, 1, 0]),
@@ -85,6 +41,7 @@ def create_target(name, offset):
     dummy_target.disable_rigid_body_physics()
     dummy_target.set_collision_enabled(False)
     return dummy_target
+
 
 def create_wall(name, offset, scene):
     """
@@ -111,14 +68,15 @@ def create_wall(name, offset, scene):
     )
 
     for i in range(4):
-        name = name + wall_name[i]
+        object_name = name + wall_name[i]
         dummy_wall = FixedCuboid(
             prim_path='/World/' + name + "/" + wall_name[i],
-            name=name,
+            name=object_name,
             position=wall_location[i],
             scale=wall_scale[i],
         )
         scene.add(dummy_wall)
+
 
 def create_cliff(name, offset, scene):
     """
@@ -126,8 +84,8 @@ def create_cliff(name, offset, scene):
 
     Therefor the agent and box can pass through the cliff.
 
-    Maybe we should create new class for cliff for reward function, 
-    if agent and box fall into cliff, this experience should be restarted and get -1000 reward.
+    Maybe we should create new class for cliff for reward function,
+    if agent and box fall into cliff, this experience should be restart and get -1000 reward.
     """
     cliff_original_location = np.array([
         [6, -0, 0.5],
@@ -157,10 +115,10 @@ def create_cliff(name, offset, scene):
     for index in range(len(cliff_location)):
         x, y, _ = cliff_location[index]
         prim_name = 'cliff' + str(index)
-        name = name + 'cliff' + str(index)
+        object_name = name + 'cliff' + str(index)
         cliff_dummy_cuboid = DynamicCuboid(
             prim_path='/World/' + name + "/" + prim_name,
-            name=name,
+            name=object_name,
             position=cliff_location[index],
             scale=cliff_scale,
             color=cliff_color,
