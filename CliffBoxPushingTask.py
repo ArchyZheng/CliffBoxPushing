@@ -146,7 +146,6 @@ class CliffBoxPushingTask(BaseTask):
                                                          - self._box.get_world_pose()[0])
         distance_betweee_agent_and_target = -1 * torch.norm(self._target.get_world_pose()[0]
                                                             - self._jetbot.get_world_poses()[0])
-        self._box.get_local_pose()
         return {'distance_between_agent_and_target': distance_betweee_agent_and_target,
                 'distance_between_box_and_target': distance_between_box_and_target,
                 'distance_between_box_and_agent': distance_between_box_and_agent}
