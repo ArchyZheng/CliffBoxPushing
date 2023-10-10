@@ -3,7 +3,7 @@ from omni.isaac.core.scenes import Scene
 from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from omni.isaac.core.articulations import ArticulationView
-from omni.isaac.core.utils.types import ArticulationAction
+from omni.isaac.core.utils.types import ArticulationAction, ArticulationActions
 import numpy as np
 from gym import spaces
 import torch
@@ -61,7 +61,6 @@ class RobotControlTask(BaseTask):
         prim_path_jetbot = "/World/" + self._name + "/Jetbot"
         add_reference_to_stage(usd_path=usd_path_jetbot, prim_path=prim_path_jetbot)
         self._jetbot = ArticulationView(prim_path_jetbot, name="Jetbot")
-        scene.add(self._jetbot)
         scene.add_default_ground_plane()
 
     def reset(self, env_index=None) -> None:
@@ -70,13 +69,8 @@ class RobotControlTask(BaseTask):
         """
         if env_index is None:
             env_index = torch.arange(self.num_envs, device=self._device)  # actually, I don't know what is this
-        num_resets = len(env_index)
-
-        dof_vel = torch.zeros((num_resets, self._jetbot.num_dof), device=self._device)
-
-        indices = env_index.to(dtype=torch.int32)
-        print(dof_vel)
-        self._jetbot.set_joint_velocities(dof_vel, indices=indices)
+        self._initial_wheel_speed = torch.tensor(np.random.uniform(-10, 10, size=(2, )),
+                                                 dtype=torch.float32, device=self.device)
 
     def post_reset(self) -> None:
         """
@@ -84,38 +78,46 @@ class RobotControlTask(BaseTask):
 
         reasign the goal velocity and angle.
         """
-        action = ArticulationAction(joint_positions=None, joint_efforts=None,
-                                    joint_velocities=self._initial_wheel_speed)
+        action = ArticulationAction(joint_positions=None, joint_efforts=None, joint_velocities=self._initial_wheel_speed)
         self._target_velocity = torch.tensor(np.random.uniform(-10, 10, size=(2, )),
                                              dtype=torch.float32, device=self.device)
         self._target_angle = torch.tensor(np.random.uniform(-1, 1, size=(1, )),
                                           dtype=torch.float32, device=self.device)
         self._jetbot.apply_action(action)
 
-    def get_observations(self) -> dict:
+    def get_observations(self):
         """
         angle /in [-1, 1]
 
         @return: the current angle, speed and position of robot.
         """
         current_speed = self._jetbot.get_linear_velocities()[0][0:2]
-        current_angle = self._jetbot.get_local_poses()[1][0][0]
+        current_angle = self._jetbot.get_local_poses()[1][0][0].unsqueeze(0)
         current_position = self._jetbot.get_local_poses()[0][0][0:2]
 
-        self.observations = {'curent_angle': current_angle, 'curent_speed': current_speed,
+        self.observations = {'current_angle': current_angle, 'current_speed': current_speed,
                              'current_position': current_position}
-        return self.observations
+        print(self.observations)
+        return torch.concat([current_angle, current_speed, current_position])
 
-    def calculate_metrics(self) -> dict:
+    def pre_physics_step(self, actions) -> None:
+        action = ArticulationAction(joint_positions=None, joint_efforts=None,
+                                    joint_velocities=actions)
+        self._jetbot.apply_action(action)
+
+    def calculate_metrics(self):
         """
         distance_angle = target_angle - current_angle
         distance_speed = target_speed - current_speed
         distance_position = current_position - original_position
         """
-        distance_angle = self._target_angle - self.observations['curent_angle']
-        distance_speed = self._target_velocity - self.observations['curent_speed']
-        distacne_position = self.observations['current_position'] - torch.tensor([0, 0], dtype=torch.float32, device=self.device)
+        distance_angle = torch.norm(self._target_angle - self.observations['current_angle'])
+        distance_speed = torch.norm(self._target_velocity - self.observations['current_speed'])
+        distance_position = torch.norm(self.observations['current_position'] - torch.tensor([0, 0], dtype=torch.float32, device=self.device))
 
         self.metrics = {'distance_angle': distance_angle, 'distance_speed': distance_speed,
-                        'distacne_position': distacne_position}
-        return self.metrics
+                        'distance_position': distance_position}
+        return torch.concat([distance_angle, distance_speed, distance_position])
+
+    def is_done(self) -> bool:
+        return False

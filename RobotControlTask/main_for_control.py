@@ -1,18 +1,18 @@
 from omni.isaac.gym.vec_env import VecEnvBase
 import numpy as np
+from model import MLPNet
 
 env = VecEnvBase(headless=True, enable_livestream=True)
 from RobotControlTask import RobotControlTask
 task = RobotControlTask(name="RobotControlTask_0", offset=np.array([0, 0, 0]))
 
 env.set_task(task, backend="torch", sim_params={"use_gpu_pipeline": False})
-print(env._world._device)
+MLP_net = MLPNet(5, 2).to(device='cpu')
 # env.reset()
-while True:
-    env._world.step()
-    print(env._task.get_observations())
-    print(env._task.calculate_metrics())
-    print({'target_velocity': env._task._target_velocity, 'target_angle': env._task._target_angle})
-    env.render()
+actions = env._task._initial_wheel_speed
 
-env.close()
+while True:
+    observations, rewards, _, _ = env.step(actions=actions)
+    actions = MLP_net(observations)
+    print(actions)
+    env.render()
